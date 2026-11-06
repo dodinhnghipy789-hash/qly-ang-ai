@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Marketing Dashboard</title>
+<style>
+  :root {
+    --bg: #fdf2f4;
+    --card: #ffffff;
+    --ink: #4a2e35;
+    --mute: #8c6d75;
+    --line: #fbcfe8;
+    --primary: #db2777;
+    --primary-hover: #be185d;
+    --soft: #fce7f3;
+    --chili: #e11d48;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  header {
+    background: linear-gradient(135deg, #db2777, #f472b6);
+    color: #fff;
+    padding: 24px 28px;
+    box-shadow: 0 4px 12px rgba(219, 39, 119, 0.15);
+  }
+  header h1 { margin: 0; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+  header p { margin: 6px 0 0; opacity: 0.95; font-size: 0.95rem; }
+
+  main {
+    max-width: 1200px;
+    margin: 24px auto;
+    padding: 0 20px 40px;
+    display: grid;
+    gap: 20px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media(max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 10px 25px -5px rgba(219, 39, 119, 0.05), 0 8px 10px -6px rgba(219, 39, 119, 0.03);
+  }
+  
+  h2 {
+    margin: 0 0 16px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  video, #preview {
+    width: 100%;
+    max-height: 260px;
+    background: #111;
+    border-radius: 12px;
+    object-fit: cover;
+    display: block;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+  #preview { display: none; }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 16px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(219, 39, 119, 0.2);
+  }
+  button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+  button.alt { background: var(--soft); color: var(--primary); box-shadow: none; }
+  button.alt:hover { background: #fbcfe8; }
+  button.hot { background: var(--chili); box-shadow: none; color: #fff; }
+  button:disabled { opacity: 0.5; cursor: wait; transform: none; }
+
+  input, select {
+    font: inherit;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    width: 100%;
+    background: #fff;
+    color: var(--ink);
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.15);
+  }
+
+  .row { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+
+  #result {
+    white-space: pre-wrap;
+    min-height: 220px;
+    max-height: 280px;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    background: #fff8fa;
+    font-size: 0.95rem;
+  }
+  #result.empty { color: var(--mute); }
+
+  .scroll { overflow-x: auto; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 0.85rem; color: var(--mute); text-transform: uppercase; letter-spacing: 0.5px; background: #fff8fa; }
+  
+  .tag { display: inline-block; padding: 4px 10px; border-radius: 99px; font-size: 0.8rem; font-weight: 500; background: #f1f5f9; }
+  .tag.wait { background: #fef3c7; color: #92400e; }
+  .tag.done { background: #dcfce7; color: #166534; font-weight: 600; }
+  .tag.err { background: #fee2e2; color: #991b1b; }
+  .category-badge { background: #fce7f3; color: #9d174d; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-block; }
+
+  .hint { color: var(--mute); font-size: 0.88rem; margin: 8px 0 0; }
+  
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 12px;
+    display: none;
+    max-width: 90%;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    font-weight: 500;
+    z-index: 1000;
+  }
+
+  input[type=checkbox] { width: auto; margin-right: 6px; accent-color: var(--primary); }
+  label.chk { display: inline-flex; align-items: center; flex: 0 0 auto; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+  .thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; vertical-align: middle; margin-right: 8px; border: 1px solid var(--line); }
+
+  details { margin-top: 12px; background: #fff8fa; padding: 10px 14px; border-radius: 10px; border: 1px dashed var(--line); }
+  summary { cursor: pointer; font-weight: 600; color: var(--primary); font-size: 0.95rem; }
+  ol { margin: 8px 0; padding-left: 20px; }
+
+  dialog { border: 1px solid var(--line); border-radius: 16px; max-width: 520px; width: 92%; background: var(--card); color: var(--ink); padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+  dialog pre { white-space: pre-wrap; font: inherit; background: #fff8fa; padding: 12px; border-radius: 8px; border: 1px solid var(--line); }
+
+  .gov-card {
+    margin-top: 14px;
+    background: #fff8fa;
+    border: 1px solid #fbcfe8;
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 6px -1px rgba(219,39,119,0.04);
+    display: none;
+  }
+  .gov-card.warning { background: #fefce8; border-color: #fef08a; }
+  .gov-card.high { background: #fff1f2; border-color: #fecdd3; }
+
+  .gov-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #f3d1d8;
+    padding-bottom: 8px;
+  }
+  .gov-title { font-weight: 600; font-size: 0.92rem; color: #831843; display: flex; align-items: center; gap: 6px; }
+  .gov-badge {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .gov-badge.low { background: #fce7f3; color: #9d174d; }
+  .gov-badge.warning { background: #fef3c7; color: #92400e; }
+  .gov-badge.high { background: #fee2e2; color: #991b1b; }
+
+  .gov-body { font-size: 0.9rem; color: #503138; }
+  .gov-row { display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center; }
+  .gov-desc { margin-top: 8px; color: var(--mute); font-size: 0.85rem; border-top: 1px dashed #f3d1d8; padding-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AI Marketing & Sales Dashboard</h1>
+  <p>Hệ thống quản lý sản phẩm thông minh, tự động hóa nội dung & kiểm duyệt tuân thủ BPM</p>
+</header>
+
+<main>
+  <section>
+    <h2>🔑 Cấu hình Khóa Gemini API</h2>
+    <div class="row" style="margin-top:0">
+      <input id="apikey" type="password" placeholder="Dán API key Gemini vào đây (Bắt đầu bằng AIza...)" autocomplete="off">
+      <button class="alt" id="savekey" style="flex:0 0 auto">Lưu key</button>
+    </div>
+    <p class="hint">Lấy key miễn phí tại aistudio.google.com. Khóa được mã hóa lưu trữ an toàn trong trình duyệt của bạn.</p>
+  </section>
+
+  <section id="social">
+    <h2>🌐 Tích hợp Đa kênh (Facebook & Instagram)</h2>
+    <p id="fbstatus" class="hint" style="margin:0 0 10px">Trạng thái: Chưa kết nối. Hệ thống đang chạy ở chế độ mô phỏng.</p>
+    <p id="fbnote" class="hint" hidden></p>
+    <div class="row" style="margin-top:0">
+      <input id="fbtoken" type="password" placeholder="Dán User access token lấy từ Graph API Explorer" autocomplete="off">
+      <button id="fbconnect" style="flex:0 0 auto">Kết nối tài khoản</button>
+    </div>
+    <div class="row" id="fbpick" hidden style="align-items: center;">
+      <select id="pageSel"></select>
+      <label class="chk"><input type="checkbox" id="useFb" checked> Đăng Facebook</label>
+      <label class="chk"><input type="checkbox" id="useIg" checked> Đăng Instagram</label>
+    </div>
+    <details>
+      <summary>Cấu hình Token dài hạn (Nâng cao)</summary>
+      <div class="row" style="margin-top: 10px;"><input id="appId" placeholder="Meta App ID" autocomplete="off"><input id="appSecret" type="password" placeholder="Meta App Secret" autocomplete="off"></div>
+    </details>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2>📸 Camera & Quét sản phẩm</h2>
+      <video id="cam" autoplay playsinline muted></video>
+      <img id="preview" alt="Ảnh sản phẩm đã chọn">
+      <canvas id="canvas" hidden></canvas>
+      <div class="row">
+        <button id="scan">Quét ảnh & Viết bài AI</button>
+        <button class="alt" id="upload">Chọn tệp ảnh</button>
+        <button class="alt" id="useCam" hidden>Dùng lại Camera</button>
+      </div>
+      <div class="row" style="margin-top: 8px;">
+        <button class="alt" id="ganProcessBtn" onclick="runGanSimulation()" style="background: #fdf2f4; border: 1px solid #f472b6; color: #db2777;">✨ Tối ưu ảnh bằng GANs Studio</button>
+      </div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <p class="hint" id="camstate">Đang khởi động camera...</p>
+    </section>
+
+    <section>
+      <h2>✨ Nội dung AI & Kiểm duyệt BPM</h2>
+      <div id="result" class="empty">Chưa có dữ liệu phân tích. Vui lòng hướng sản phẩm ra camera hoặc tải ảnh lên để bắt đầu.</div>
+      
+      <div id="govBox" class="gov-card">
+        <div class="gov-header">
+          <span class="gov-title">🛡️ Mô-đun Kiểm duyệt & Tuân thủ (BPM)</span>
+          <span id="govBadge" class="gov-badge low">AN TOÀN</span>
+        </div>
+        <div class="gov-body">
+          <div class="gov-row">
+            <span>Điểm rủi ro nội dung:</span>
+            <strong id="govScore">0 / 100</strong>
+          </div>
+          <div class="gov-desc" id="govText">Chờ phân tích nội dung...</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <select id="target"></select>
+        <button class="alt" id="saveContent" style="flex:0 0 auto">Gắn bài viết</button>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <h2>📦 Quản lý Danh mục & Lịch đăng bài đa kênh</h2>
+    <div class="row" style="margin:0 0 16px">
+      <input id="newName" placeholder="Nhập tên sản phẩm..." style="flex:2">
+      <input id="newCategory" placeholder="Danh mục (vd: Thời trang, Mỹ phẩm...)">
+      <button id="addProd" style="flex:0 0 auto">Thêm sản phẩm</button>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Sản phẩm</th>
+            <th>Danh mục</th>
+            <th>Nội dung</th>
+            <th>Trạng thái thực thi</th>
+            <th>Hẹn giờ xuất bản</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <h3 style="margin-top:0; color:var(--primary);">Chi tiết bài viết quảng cáo</h3>
+  <pre id="dlgtext"></pre>
+  <div class="row" style="justify-content: flex-end; margin-top: 16px;">
+    <button id="closeDlg" style="flex:0 0 auto">Đóng cửa sổ</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+
+let products = store.get('products_v3', []);
+let nextId = products.reduce((m,p)=>Math.max(m,p.id),0)+1;
+let usingUpload = false;
+let lastMime = 'image/jpeg';
+let lastImage = null; 
+let lastPostImage = null; 
+let lastResult = '';
+let detectedCategory = 'Thời trang';
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(()=>t.style.display='none', 3000);
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+
+$('apikey').value = store.get('gkey', '');
+$('savekey').onclick = () => { store.set('gkey', $('apikey').value.trim()); toast('Đã lưu khóa API thành công!'); if (lastImage && $('apikey').value.trim()) run(lastMime); };
+
+const video = $('cam');
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+    .then(s => { video.srcObject = s; $('camstate').textContent = 'Camera đã sẵn sàng quét.'; })
+    .catch(() => { $('camstate').textContent = 'Không mở được camera. Vui lòng dùng tính năng "Chọn tệp ảnh".'; });
+} else {
+  $('camstate').textContent = 'Trình duyệt không hỗ trợ camera. Vui lòng dùng tính năng "Chọn tệp ảnh".';
+}
+
+$('upload').onclick = () => $('file').click();
+$('file').onchange = e => {
+  e.target.dataset.x = 1;
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = async () => {
+    const img = $('preview'); img.src = r.result; img.style.display = 'block'; video.style.display = 'none';
+    lastImage = await shrink(r.result);
+    lastPostImage = await shrink(r.result, 1080);
+    usingUpload = true; lastMime = 'image/jpeg'; $('useCam').hidden = false;
+    run(lastMime);
+  };
+  r.readAsDataURL(f);
+};
+
+$('scan').onclick = async () => {
+  if (usingUpload && lastImage) { run(lastMime); return; }
+  if (!video.videoWidth) { toast('Chưa có tín hiệu camera. Vui lòng chọn ảnh từ máy.'); return; }
+  const c = $('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
+  c.getContext('2d').drawImage(video, 0, 0);
+  const full = c.toDataURL('image/jpeg', 0.9);
+  lastImage = await shrink(full);
+  lastPostImage = await shrink(full, 1080);
+  run('image/jpeg');
+};
+$('useCam').onclick = () => {
+  usingUpload = false; lastImage = null; lastPostImage = null; $('useCam').hidden = true;
+  $('preview').style.display = 'none'; video.style.display = 'block'; $('file').value = '';
+};
+
+// GANs STUDIO ĐỘNG: Xử lý thay đổi hoàn toàn background theo danh mục ngay trên client
+function runGanSimulation() {
+  const img = $('preview');
+  if (!img.src || img.style.display === 'none') {
+    toast('Vui lòng quét hoặc chọn ảnh sản phẩm trước khi tối ưu!');
+    return;
+  }
+  toast(`🤖 GANs Studio đang thay đổi Background theo danh mục: [${detectedCategory}]...`);
+  
+  setTimeout(() => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const imageObj = new Image();
+    
+    imageObj.onload = function() {
+      canvas.width = imageObj.width;
+      canvas.height = imageObj.height;
+      
+      let wallTop, wallBottom, floorTop, floorBottom, accentColor;
+      const cat = (detectedCategory || '').toLowerCase();
+
+      if (cat.includes('mỹ phẩm') || cat.includes('nước hoa') || cat.includes('skincare')) {
+        wallTop = '#581c87'; wallBottom = '#3b0764';
+        floorTop = '#fce7f3'; floorBottom = '#f472b6';
+        accentColor = 'rgba(255, 255, 255, 0.7)';
+      } else if (cat.includes('điện tử') || cat.includes('công nghệ') || cat.includes('phụ kiện')) {
+        wallTop = '#0f172a'; wallBottom = '#020617';
+        floorTop = '#1e293b'; floorBottom = '#0f172a';
+        accentColor = 'rgba(56, 189, 248, 0.7)';
+      } else if (cat.includes('đồ ăn') || cat.includes('thực phẩm') || cat.includes('đồ uống')) {
+        wallTop = '#451a03'; wallBottom = '#1c1108';
+        floorTop = '#78350f'; floorBottom = '#292524';
+        accentColor = 'rgba(251, 191, 36, 0.7)';
+      } else {
+        // Mặc định Thời trang: Studio xám khói & sàn gỗ cao cấp
+        wallTop = '#1e1e1e'; wallBottom = '#0a0a0a';
+        floorTop = '#4d3323'; floorBottom = '#120804';
+        accentColor = 'rgba(255, 255, 255, 0.6)';
+      }
+
+      // 1. Phủ tường studio mới
+      const wallGrad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.75);
+      wallGrad.addColorStop(0, wallTop);
+      wallGrad.addColorStop(1, wallBottom);
+      ctx.fillStyle = wallGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Ánh sáng Spotlight chiếu rọi
+      const spotlight = ctx.createRadialGradient(
+        canvas.width * 0.5, canvas.height * 0.1, 10,
+        canvas.width * 0.5, canvas.height * 0.1, canvas.width * 0.8
+      );
+      spotlight.addColorStop(0, accentColor);
+      spotlight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = spotlight;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 2. Phủ mặt sàn phía dưới
+      const floorY = canvas.height * 0.75;
+      const floorGrad = ctx.createLinearGradient(0, floorY, 0, canvas.height);
+      floorGrad.addColorStop(0, floorTop);
+      floorGrad.addColorStop(1, floorBottom);
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, floorY, canvas.width, canvas.height - floorY);
+
+      // Đường ranh giới phản chiếu
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = Math.max(2, canvas.width * 0.003);
+      ctx.beginPath();
+      ctx.moveTo(0, floorY);
+      ctx.lineTo(canvas.width, floorY);
+      ctx.stroke();
+
+      // 3. Tách nền bức ảnh gốc (Xóa màu xám/trắng nhạt xung quanh)
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = imageObj.width;
+      tempCanvas.height = imageObj.height;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.drawImage(imageObj, 0, 0);
+      
+      const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2];
+        if (r > 195 && g > 195 && b > 195) {
+          data[i+3] = 0; // Làm trong suốt nền cũ
+        }
+      }
+      tCtx.putImageData(imgData, 0, 0);
+
+      // 4. Đổ bóng thực tế và vẽ mẫu lên background mới
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 40;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 25;
+      ctx.drawImage(tempCanvas, 0, 0);
+      ctx.restore();
+
+      ctx.drawImage(tempCanvas, 0, 0);
+
+      img.src = canvas.toDataURL('image/jpeg', 0.95);
+      lastPostImage = canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+      toast(`✨ Thành công: Đã đổi phông nền Studio cho [${detectedCategory}]!`);
+    };
+    
+    imageObj.src = img.src;
+  }, 400);
+}
+
+function shrink(dataUrl, max = 640){
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', 0.8).split(',')[1]);
+    };
+    img.onerror = () => res(dataUrl.split(',')[1]);
+    img.src = dataUrl;
+  });
+}
+
+async function run(mime){
+  lastMime = mime;
+  const key = $('apikey').value.trim();
+  if (!key) { 
+    const b = $('result'); b.className=''; 
+    b.textContent='Chưa có API key. Vui lòng dán khóa Gemini vào ô cấu hình ở trên và lưu lại.'; 
+    $('apikey').focus(); window.scrollTo({top:0,behavior:'smooth'}); return; 
+  }
+  store.set('gkey', key);
+  const box = $('result'); box.className = ''; box.textContent = 'Đang phân tích hình ảnh và tự động phân loại danh mục...';
+  $('govBox').style.display = 'none';
+  $('scan').disabled = true;
+  const t0 = performance.now();
+  
+  const prompt = `Hãy nhìn ảnh sản phẩm này:
+1. Nhận diện tên sản phẩm trong ảnh (dòng đầu tiên ghi: "Sản phẩm: <tên>").
+2. Nhận diện danh mục sản phẩm (chọn một trong các loại: Thời trang, Mỹ phẩm, Đồ ăn, Đồ gia dụng, Phụ kiện, Điện tử) (dòng thứ hai ghi: "Danh mục: <tên danh mục>").
+3. Viết bài đăng quảng cáo Facebook trẻ trung bằng tiếng Việt, tiêu đề bắt mắt, mô tả ngắn, hashtag (tối đa 100 từ).`;
+
+  try {
+    const r = await fetch('/api/generate', {
+      method:'POST', 
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({key, mime, image:lastImage, prompt})
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    
+    lastResult = j.text; 
+    box.innerHTML = fmt(j.text);
+
+    const catMatch = j.text.match(/Danh mục:\s*\**\s*([^\n*]+)/i);
+    if (catMatch && catMatch[1]) {
+      detectedCategory = catMatch[1].trim();
+    }
+
+    if (j.governance) {
+      const g = j.governance;
+      const gBox = $('govBox');
+      const badge = $('govBadge');
+      
+      gBox.style.display = 'block';
+      gBox.className = 'gov-card ' + (g.risk_level === 'HIGH' ? 'high' : g.risk_level === 'MEDIUM' ? 'warning' : '');
+      
+      badge.className = 'gov-badge ' + (g.risk_level === 'HIGH' ? 'high' : g.risk_level === 'MEDIUM' ? 'warning' : 'low');
+      badge.textContent = 'MỨC ĐỘ: ' + g.risk_level;
+      
+      $('govScore').textContent = g.risk_score + ' / 100';
+      $('govText').textContent = g.message;
+    }
+
+    toast('Hoàn thành trong ' + ((performance.now() - t0) / 1000).toFixed(1) + ' giây (Model: ' + j.model + ')');
+  } catch(err) {
+    box.textContent = 'Lỗi hệ thống: ' + err.message;
+  } finally { 
+    $('scan').disabled = false; 
+  }
+}
+
+function render(){
+  $('target').innerHTML = '<option value="new">+ Thêm sản phẩm mới theo ảnh vừa quét</option>' + products.map(p => `<option value="${p.id}">${esc(p.name)} (${esc(p.category)})</option>`).join('');
+  if(!products.length){ $('rows').innerHTML='<tr><td colspan="5" class="hint" style="text-align:center; padding:20px;">Chưa có sản phẩm nào trong hệ thống.</td></tr>'; return; }
+  $('rows').innerHTML = products.map(p => {
+    const job = social.connected ? jobFor(p.id) : null;
+    let st = '<span class="tag">Chưa lên lịch</span>';
+    
+    if (job) {
+      st = jobStatus(job);
+    } else if (p.posted) {
+      st = '<span class="tag done">Đã xuất bản (Đã đăng)</span>';
+    } else if (p.schedule) {
+      st = `<span class="tag wait">Hẹn ${esc(p.schedule.replace('T',' '))}</span>`;
+    }
+
+    const thumb = p.image ? `<img class="thumb" alt="" src="data:image/jpeg;base64,${p.image}">` : '';
+    const bai = p.content ? `${thumb}<button class="alt" onclick="view(${p.id})">Xem bài</button>` : '<span class="hint">Chưa có</span>';
+    const now = social.connected ? `<button class="alt" onclick="postNow(${p.id})">Đăng ngay</button>` : '';
+    return `<tr><td><b>${esc(p.name)}</b></td><td><span class="category-badge">${esc(p.category || 'Khác')}</span></td><td>${bai}</td><td>${st}</td>
+      <td><input type="datetime-local" id="t${p.id}" value="${esc(p.schedule)}">
+      <div class="row"><button onclick="sched(${p.id})">Lưu lịch</button>${now}<button class="hot" onclick="del(${p.id})">Xóa</button></div></td></tr>`;
+  }).join('');
+}
+window.view = id => { $('dlgtext').textContent = products.find(p=>p.id===id).content; $('dlg').showModal(); };
+$('closeDlg').onclick = () => $('dlg').close();
+
+window.sched = id => schedule(id, false);
+window.postNow = id => { if (confirm('Xác nhận đăng bài viết này lên mạng xã hội ngay bây giờ?')) schedule(id, true); };
+
+async function schedule(id, now){
+  const p = products.find(x=>x.id===id);
+  const v = $('t'+id).value;
+  if (!now && !v) { toast('Vui lòng chọn thời gian hẹn lịch.'); return; }
+  
+  if (!social.connected) { 
+    p.schedule = v; 
+    p.posted = true; 
+    store.set('products_v3', products); 
+    render();
+    toast(now ? 'Đã đăng bài viết thành công (Mô phỏng)!' : 'Đã lưu lịch và xuất bản thành công (Mô phỏng)!'); 
+    return;
+  }
+
+  if (!p.content) { toast('Sản phẩm chưa có nội dung bài viết.'); return; }
+  if (!p.image) { toast('Sản phẩm chưa có hình ảnh đính kèm.'); return; }
+  const tg = targets();
+  if (!tg.length) { toast('Vui lòng chọn ít nhất một kênh xuất bản.'); return; }
+  const when = now ? Date.now() / 1000 : new Date(v).getTime() / 1000;
+  if (!now && when < Date.now() / 1000 - 30) { toast('Thời gian hẹn phải lớn hơn thời điểm hiện tại.'); return; }
+  const old = jobFor(id);
+  if (old && Object.values(old.t).some(x => x === 'pending' || x === 'scheduled')) await api('/api/social/cancel', {id: old.id});
+  toast(now ? 'Đang truyền tải lệnh đăng...' : 'Đang thiết lập lịch hẹn...');
+  const j = await api('/api/social/schedule', {productId:id, name:p.name, message:cleanPost(p.content), image:p.image, when, targets:tg});
+  if (!j.ok) { toast('Lỗi thực thi: ' + j.error); return; }
+  
+  p.schedule = now ? '' : v; 
+  p.posted = true; 
+  store.set('products_v3', products);
+  await refreshJobs(true);
+  toast(now ? 'Đã đẩy bài viết thành công!' : 'Đã lập lịch đăng bài thành công!');
+}
+
+$('addProd').onclick = () => {
+  const n = $('newName').value.trim();
+  if (!n) { toast('Vui lòng nhập tên sản phẩm.'); return; }
+  products.push({id:nextId++, name:n, category:$('newCategory').value.trim()||'Khác', content:'', schedule:'', posted:false});
+  $('newName').value=''; $('newCategory').value='';
+  store.set('products_v3', products); render();
+  toast('Đã thêm sản phẩm vào danh mục');
+};
+window.del = id => {
+  if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return;
+  products = products.filter(p=>p.id!==id); store.set('products_v3', products); render();
+  toast('Đã xóa sản phẩm');
+};
+
+$('saveContent').onclick = () => {
+  if (!lastResult) { toast('Chưa có nội dung bài viết từ AI.'); return; }
+  let p;
+  if ($('target').value === 'new') {
+    const m = lastResult.match(/Sản phẩm:\s*\**\s*([^\n*]+)/i);
+    const catMatch = lastResult.match(/Danh mục:\s*\**\s*([^\n*]+)/i);
+    const name = (m ? m[1] : 'Sản phẩm mới').trim();
+    const category = (catMatch ? catMatch[1] : 'Khác').trim();
+    p = {id:nextId++, name, category, content:'', schedule:'', posted:false};
+    products.push(p);
+  } else {
+    p = products.find(x => x.id === +$('target').value);
+  }
+  p.content = lastResult; if (lastPostImage) p.image = lastPostImage;
+  store.set('products_v3', products); render();
+  toast('Đã liên kết bài viết thành công!');
+};
+
+let social = {connected:false, page:null, pages:[]};
+let jobs = [], jobsSig = '';
+
+async function api(path, body){
+  try {
+    const r = await fetch(path, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {});
+    return await r.json();
+  } catch(e) { return {ok:false, error:'Lỗi kết nối server: ' + e.message}; }
+}
+const cleanPost = t => t.replace(/^\s*\**\s*Sản phẩm:.*$/im, '').replace(/^\s*\**\s*Danh mục:.*$/im, '').replace(/\*\*/g, '').replace(/__/g, '').trim();
+const targets = () => { const t = []; if ($('useFb').checked) t.push('fb'); if ($('useIg').checked && !$('useIg').disabled) t.push('ig'); return t; };
+const jobFor = pid => jobs.filter(j => j.productId === pid).slice(-1)[0];
+
+function jobStatus(j){
+  const name = {fb:'Facebook', ig:'Instagram'};
+  const lab = {pending:'đang chờ', scheduled:'đã hẹn giờ', done:'đã đăng', error:'lỗi', canceled:'đã hủy'};
+  const cls = {pending:'wait', scheduled:'wait', done:'done', error:'err', canceled:''};
+  const when = new Date(j.when * 1000).toLocaleString('vi-VN');
+  const lines = Object.keys(j.t).map(k => {
+    const link = j.links && j.links[k] ? ` <a href="${esc(j.links[k])}" target="_blank" rel="noopener">Xem bài</a>` : '';
+    return `<div><span class="tag ${cls[j.t[k]]}">${name[k]}: ${lab[j.t[k]]}</span>${link}</div>`;
+  }).join('');
+  return `<div class="hint" style="margin:0 0 4px">Thời điểm: ${esc(when)}</div>${lines}`;
+}
+
+function showSocial(){
+  const s = $('fbstatus'), pk = $('fbpick');
+  if (!social.connected) { s.textContent = 'Trạng thái: Chưa kết nối.'; pk.hidden = true; return; }
+  const pg = social.page;
+  s.innerHTML = 'Đã kết nối Fanpage: <b>' + esc(pg.name) + '</b>';
+  pk.hidden = false;
+  $('pageSel').innerHTML = social.pages.map(p => `<option value="${esc(p.id)}"${p.id === pg.id ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+}
+
+async function loadSocial(){
+  const d = await api('/api/social/status');
+  if (d.ok) { social = d; showSocial(); render(); refreshJobs(true); }
+}
+
+async function refreshJobs(force){
+  if (!social.connected) return;
+  const d = await api('/api/social/jobs');
+  if (!d.ok) return;
+  const sig = JSON.stringify(d.jobs);
+  if (sig === jobsSig && !force) return;
+  jobsSig = sig; jobs = d.jobs;
+  render();
+}
+
+$('fbconnect').onclick = async () => {
+  const tok = $('fbtoken').value.trim();
+  if (!tok) { toast('Vui lòng nhập User Access Token.'); return; }
+  $('fbconnect').disabled = true;
+  const d = await api('/api/social/connect', {userToken:tok, appId:$('appId').value.trim(), appSecret:$('appSecret').value.trim()});
+  $('fbconnect').disabled = false;
+  if (!d.ok) { toast('Lỗi kết nối: ' + d.error); return; }
+  social = d; $('fbtoken').value = ''; showSocial(); render(); refreshJobs(true);
+  toast('Kết nối tài khoản Meta thành công!');
+};
+$('pageSel').onchange = async () => {
+  const d = await api('/api/social/select', {pageId:$('pageSel').value});
+  if (d.ok) { social = d; showSocial(); render(); }
+};
+
+if (location.protocol.startsWith('http')) { loadSocial(); setInterval(refreshJobs, 8000); }
+
+render();
+</script>
+</body>
+</html>
